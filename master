@@ -1,0 +1,125 @@
+##fixed parameters
+#odoo
+OE_USER="master"
+OE_HOME="/master"
+OE_HOME_EXT="/master/odoo-server"
+#The default port where this Odoo instance will run under (provided you use the command -c in the terminal)
+#Set the default Odoo port (you still have to use -c /etc/odoo-server.conf for example to use this.)
+OE_PORT="4876"
+#Choose the Odoo version which you want to install. For example: 11.0, 10.0, 9.0 or saas-18. When using 'master' the master version will be installed.
+#IMPORTANT! This script contains extra libraries that are specifically needed for Odoo 11.0
+OE_VERSION="12.0"
+# Set this to True if you want to install Odoo 11 Enterprise!
+#IS_ENTERPRISE="True"
+#set the superadmin password
+OE_SUPERADMIN="admin"
+OE_CONFIG="odoo-server"
+
+IS_ENTERPRISE="False"
+
+#--------------------------------------------------
+# Update Server
+#--------------------------------------------------
+echo -e "\n---- Update Server ----"
+
+sudo apt-get update
+sudo apt-get upgrade -y
+
+#--------------------------------------------------
+# Install PostgreSQL Server
+#--------------------------------------------------
+echo -e "\n---- Install PostgreSQL Server ----"
+wget --quiet -O - http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc | sudo apt-key add -
+sudo sh -c "echo 'deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main' > /etc/apt/sources.list.d/pgdg.list"
+
+sudo apt install -y postgresql openssh-server wkhtmltopdf
+sudo apt install -y openssh-server wkhtmltopdf
+
+#--------------------------------------------------
+# Install Dependencies
+#--------------------------------------------------
+echo -e "\n--- Installing Python 3 + pip3 --"
+sudo apt -y install python3 python3-pip build-essential libssl-dev libffi-dev python3-dev
+sudo apt update
+sudo apt upgrade
+
+
+echo -e "\n---- Install tool packages ----"
+sudo apt install wget git python3-pip gdebi-core -y
+
+echo -e "\n---- Install python packages ----"
+#snap install libxslt
+## snap no funciona, usar: 
+sudo apt install libxslt1-dev
+
+## buscar opciones de librerias
+## apt-cache search --names-only 'libxslt.*'
+
+sudo apt-get install --reinstall libpq-dev
+sudo apt-get install python-dev
+sudo apt-get install libjpeg-dev
+sudo apt-get install libjpeg8-dev
+#sudo apt-get install libpng3
+sudo apt install libpng-dev
+sudo apt-get install libfreetype6-dev
+sudo ln -s /usr/lib/i386-linux-gnu/libfreetype.so /usr/lib
+sudo ln -s /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib
+sudo ln -s /usr/lib/i386-linux-gnu/libz.so /usr/lib
+sudo apt install -y python3-lxml libldap2-dev libsasl2-dev libxml2-dev libxslt-dev python-dev software-properties-common
+
+#sudo apt install -y python3-dateutil python3-feedparser python3-ldap python3-lxml python-mako python3-openid python3-psycopg2 python-babel python3-pydot python-pyparsing python-simplejson python-tz python3-vatnumber python3-vobject python3-webdav python3-werkzeug python3-xlwt python-yaml  python-docutils python-psutil python-mock python-unittest2 python-jinja2 python-decorator python-requests python-passlib python-pil python3-suds node-clean-css node-less python3-gevent unzip
+#python3-zsi python-pychart python-reportlab python-vobject
+#sudo apt install -y python-dateutil python-feedparser python-ldap python-lxml python-mako python-openid python3-psycopg2 python-babel python-pychart python-pydot python-pyparsing python-reportlab python-simplejson python-tz python-vatnumber python-vobject python-webdav python-werkzeug python-xlwt python-yaml python-zsi python-docutils python-psutil python-mock python-unittest2 python-jinja2 python-decorator python-requests python-passlib python-pil python3-suds node-clean-css python-ldap node-less python-gevent unzip
+#python3-pychart, python3-zsi 
+
+sudo apt install -y python3-dateutil python3-feedparser python3-ldap python3-lxml python3-mako python3-openid python3-babel python3-pydot python3-pyparsing python3-reportlab python3-simplejson python3-tz python3-vatnumber python3-vobject python3-webdav python3-werkzeug python3-xlwt python3-yaml python3-docutils python3-psutil python3-mock python3-unittest2 python3-jinja2 python3-decorator python3-requests python3-passlib python3-pil python3-suds node-clean-css python3-ldap node-less python3-gevent unzip
+# python3-psycopg2 se quita para instalar con pip3
+pip3 install psycopg2
+
+sudo pip3 install pypdf2 Babel passlib Werkzeug decorator python-dateutil pyyaml psycopg2 psutil html2text docutils lxml pillow reportlab ninja2 requests phonenumbers xlutils gdata psycogreen num2words unoconv pyldap simplejson Boto
+sudo pip3 install libsass==0.12.3
+
+cd /tmp
+
+echo -e "\n---- Creating the ODOO PostgreSQL User  ----"
+sudo su - postgres -c "createuser -s $OE_USER" 2> /dev/null || true
+
+sudo chown _apt:root /var/lib/update-notifier/package-data-downloads/partial
+sudo apt install --reinstall update-notifier-common
+
+sudo apt install -y ttf-mscorefonts-installer
+
+echo -e "\n---- Create ODOO system user ----"
+sudo adduser --system --quiet --shell=/bin/bash --home=$OE_HOME --gecos 'ODOO' --group $OE_USER
+#The user should also be added to the sudo'ers group.
+sudo adduser $OE_USER sudo
+
+echo -e "\n---- Create Log directory ----"
+sudo mkdir /var/log/$OE_USER
+
+
+echo -e "\n---- Added Enterprise code under $OE_HOME/enterprise/addons ----"
+echo -e "\n---- Installing Enterprise specific libraries ----"
+sudo apt-get -y install nodejs npm
+sudo npm install -g less less-plugin-clean-css
+sudo pip3 install num2words ofxparse
+
+echo -e "\n==== Installing ODOO Server ===="
+sudo git clone --depth 1 --branch $OE_VERSION https://www.github.com/odoo/odoo $OE_HOME_EXT/
+
+echo -e "\n---- Setting permissions on home folder ----"
+sudo chown -R $OE_USER:$OE_USER $OE_HOME/*
+
+echo -e "* Create server config file"
+
+sudo touch /etc/${OE_CONFIG}.conf
+echo -e "* Creating server config file"
+sudo su root -c "printf '[options] \n; This is the password that allows database operations:\n' >> /etc/${OE_CONFIG}.conf"
+sudo su root -c "printf 'admin_passwd = ${OE_SUPERADMIN}\n' >> /etc/${OE_CONFIG}.conf"
+sudo su root -c "printf 'xmlrpc_port = ${OE_PORT}\n' >> /etc/${OE_CONFIG}.conf"
+sudo su root -c "printf 'logfile = /var/log/${OE_USER}/${OE_CONFIG}\n' >> /etc/${OE_CONFIG}.conf"
+
+sudo su root -c "printf 'addons_path=${OE_HOME_EXT}/addons,${OE_HOME}/custom/addons\n' >> /etc/${OE_CONFIG}.conf"
+
+sudo chown $OE_USER:$OE_USER /etc/${OE_CONFIG}.conf
+sudo chmod 640 /etc/${OE_CONFIG}.conf
